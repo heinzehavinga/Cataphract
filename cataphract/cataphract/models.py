@@ -1,11 +1,10 @@
 from django.db import models
 
-
 #Check the wiki for the models
 class Unittype(models.Model): #Could this be a sub child of landmark?
     name = models.CharField(max_length=200)
     road_speed = models.IntegerField(default=0)
-    offroad_speed = models.IntegerField(default=0)
+    offroad_speed = models.IntegerField(default=0) #if 0, no offroading with this unit
     scout_distance = models.IntegerField(default=0)
     supplies_per_day = models.IntegerField(default=0)
     carry_weight = models.IntegerField(default=0) #Loot and Supplies
@@ -42,13 +41,26 @@ class Hex(models.Model):
     region = models.ForeignKey(Region, on_delete=models.PROTECT, blank=True, null=True)
     settlement_score = models.IntegerField(default=0)
     settlement_score = models.IntegerField(default=20)
+    road = models.BooleanField(default=True)
+    river = models.IntegerField(default=0) #probably a 123456, with every side being a number so a river of 234 has river on sides 2 and 3 and 4
     last_foraged = models.DateTimeField("last foraging")
     def __str__(self):
         return f'{self.x}, {self.y}'
     #Should add road, and rivers
 
-class Commander(models.Model):
+
+class Player(models.Model):
     name = models.CharField(max_length=200)
+    discord_id = models.IntegerField(default=0)
+    notes = models.TextField()
+    def __str__(self):
+        return self.name
+    #Add attributes, items etc.
+
+class Commander(models.Model): #Need to add perks and feats! How will we program those in?
+    name = models.CharField(max_length=200)
+    player_id = models.ForeignKey(Player, on_delete=models.PROTECT, blank=True, null=True)
+    age = models.IntegerField(default=18)
     bio = models.TextField()
     faction = models.ForeignKey(Faction, on_delete=models.PROTECT)
     location = models.ForeignKey(Hex, on_delete=models.PROTECT)
@@ -79,7 +91,7 @@ class Army(models.Model): #Could this be a sub child of landmark?
 
 class Detachment(models.Model): #Could this be a sub child of landmark?
     name = models.CharField(max_length=200)
-    bio = models.TextField()
+    bio = models.TextField(blank=True)
     unittype = models.ForeignKey(Unittype, on_delete=models.PROTECT)
     units = models.IntegerField(default=0)
     non_combantants = models.IntegerField(default=0)
@@ -93,7 +105,14 @@ class Detachment(models.Model): #Could this be a sub child of landmark?
 
 
 class Order(models.Model):
-    order = models.TextField()
+    order_types = ( #We need to find a complete order list
+        (1, "Move"),
+        (2, "Rest"),
+        (3, "Build"),
+        (4, "Unique"),
+    )
+    order = models.IntegerField(choices=order_types, default=1)
+    unique_description = models.TextField(blank=True)
     commander = models.ForeignKey(Commander, on_delete=models.PROTECT)
     date_start = models.DateTimeField("start of order")
     date_end = models.DateTimeField("end of order")
