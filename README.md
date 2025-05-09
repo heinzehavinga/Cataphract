@@ -3,6 +3,13 @@ of loose apps.
 
 # Cataphract
 
+## Installation
+We should have the Django bot create an AUTH url after you set up an app.
+Than use that url to invite the bot to the server.
+Than put the discord token in de env variables for the docker compose
+Put in a username and password for the Django superuser
+Put in a username and password for the Discord bot user
+
 ## Django
 An automation suite for running a game of Cataphract,
 connects to PostGRES database

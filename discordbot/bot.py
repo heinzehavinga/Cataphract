@@ -2,6 +2,8 @@ import os
 from dotenv import load_dotenv, dotenv_values 
 import discord
 from discord.ext import tasks
+import io
+import requests
 load_dotenv() 
 import time
 
@@ -43,12 +45,32 @@ class CataphractBot(discord.Client):
         if message.content == 'Bot, how goes the game?':
             await message.channel.send(f'The game hasn\'t started yet, {message.author.mention}')
 
+        if '/listcommander' in message.content.lower():
+            r = requests.get('http://127.0.0.1:8000/cataphract/api/commanders/', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD')))
+            commanders = r.json()
+            commander_list_message =  f"Of course {message.author.mention}, Here is a list of all commanders in the game:\n"
+            
+            for commander in commanders['results']:
+                commander_list_message += f"{commander['name']}\n"
+            
+            await message.channel.send(commander_list_message)
+
+        if '/showmap' in message.content.lower():
+            r = requests.get('http://127.0.0.1:8000/static/test.png', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD'))) #This will be a API call to dynamically generate image instead of static file.
+            with io.BytesIO() as image_binary:
+                image_binary.write(r.content)
+                image_binary.seek(0)
+                await message.channel.send('Here is your current map', file=discord.File(fp=image_binary, filename='map.png'))
+
+
     async def on_member_join(self, member):
         guild = member.guild
         if guild.system_channel is not None:
             to_send = f'Welcome {member.mention} to {guild.name}!'
             ##Add it to the queue of availible players, maybe put in a general news chat.
             await guild.system_channel.send(to_send)
+
+
 
     #https://github.com/Rapptz/discord.py/blob/master/examples/background_task.py < Recurring tasks, this will be our main cron loop
     async def setup_hook(self) -> None:
@@ -71,26 +93,26 @@ class CataphractBot(discord.Client):
         #             print(game_channel.id)
 
         game_channel = self.get_channel(1369341115018510367)
+        
 
 
-
-        ##Create private thread
-        thread = await game_channel.create_thread(name="private test thread", type=None, reason="Used when player are at the same location", invitable=False)
-        for guild in self.guilds:
-            for role in guild.roles: #This should be done through, guild.get_member and use the id list.
-                #Than check through all the private_thread to see if the exact combination exsist?
-                #If it does, set permission correctly again (can this be done per thread?)
-                #If not create new thread
-                for member in role.members:
-                    print(role.name, member)
-                    await thread.add_user(member)
-                    time.sleep(4) #Inserted because of ratelimiting
-
-            
-
-
+        ##Create private thread (THIS SNIPPET WORKS, DON'T DELETE)
+        # thread = await game_channel.create_thread(name="private test thread", type=None, reason="Used when player are at the same location", invitable=False)
+        # for guild in self.guilds:
+        #     for role in guild.roles: #This should be done through, guild.get_member and use the id list.
+        #         #Than check through all the private_thread to see if the exact combination exsist?
+        #         #If it does, set permission correctly again (can this be done per thread?)
+        #         #If not create new thread
+        #         for member in role.members:
+        #             print(role.name, member)
+        #             await thread.add_user(member)
+        #             time.sleep(4) #Inserted because of ratelimiting
         #For locking threads, just remove persmissions? thread.permissions_for, can be done for role
 
+        
+        
+        #TODO: make sure bot user has the correct rights (instead of super user) and make user and password an env variable
+       
 
         #Get list of tasks Post @everyone (only active player group) the new tick has happend (do we need that?), opening channels, send users their new map, etc.)
         
