@@ -7,6 +7,23 @@ import requests
 load_dotenv() 
 import time
 
+
+
+def format_army_sheet(json):
+    message = f'**Commander: {json["commander"]} (age: {json["age"]})** \n'
+    message += f'Infantry 4,600 Cavalry 600 Wagons 25 NC 1,300 // {json["army_length"]} miles \n' #TODO: calc unit totals
+    message += '\n'
+    message += f'Morale {json["morale"]} \n'
+    message += '\n'
+    message += f'Supplies {json["supplies"]}/{json["capacity"]}\n'
+    message += f'     Uses {json["supplies_per_day"]} supplies per day\n'
+    message += '\n'
+    message += f'Detachments:\n'
+    for detachment in json["detachments"]:
+        message += f'{detachment}\n'
+    
+    return message
+
 #TODO:
 # Add a Discord template, that can set up all the things (you can do this to an init function)
 # What sort of rights are minimally needed for bot (right now admin, which isn't needed)
@@ -55,6 +72,13 @@ class CataphractBot(discord.Client):
             
             await message.channel.send(commander_list_message)
 
+        if '/armysheet' in message.content.lower():
+            r = requests.get(f'http://127.0.0.1:8000/cataphract/commandersheet/{message.author.id}', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD')))
+            sheet = r.json()
+            sheet_message = format_army_sheet(sheet)
+            
+            await message.channel.send(sheet_message)
+
         if '/showmap' in message.content.lower():
             r = requests.get('http://127.0.0.1:8000/static/test.png', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD'))) #This will be a API call to dynamically generate image instead of static file.
             with io.BytesIO() as image_binary:
@@ -71,18 +95,23 @@ class CataphractBot(discord.Client):
             await guild.system_channel.send(to_send)
 
 
-
     #https://github.com/Rapptz/discord.py/blob/master/examples/background_task.py < Recurring tasks, this will be our main cron loop
     async def setup_hook(self) -> None:
         self.update_world.start()
 
-    @tasks.loop(seconds=3600)  # task runs every hour (maybe once every six hours?)
+    # The idea right now is to have a tick last four hours 
+    # This loop Should be changed to specific times, like this https://stackoverflow.com/a/77977282
+    #Also for our test game we should have a way to manually trigger the next tick.
+    # https://www.mikro-mineral.nl/randomgameideas/index.php/Timekeeping
+    @tasks.loop(seconds=14400) 
     async def update_world(self):
         print('update world')
+        
         #Make Django Call
-            #Get complete member list that have role of 'player', send to Django.
-            #Anyone new? Add it to the database
-            #Anyone missing? Message a referee that army should be taken over by new commander!
+        #Get complete member list that have role of 'player', send to Django.
+        #Anyone new? Add it to the database
+        #Anyone missing? Message a referee that army should be taken over by new commander!
+        
 
         #Write some settings to a little file, maybe a sqllite or just a json? To prevent this sort of looping
         # game_channel = None

@@ -8,6 +8,7 @@ router.register(r'commanders', views.CommanderViewSet)
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("commandersheet/<int:discordid>", views.Commandersheet.as_view()),
     path("api/", include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework'))
 ]

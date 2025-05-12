@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Unittype, Strongholdtype, Faction, Region, Hex, Commander, Strongholds, Army, Detachment, Order
+from .models import *
 
 admin.site.register(Unittype)
 admin.site.register(Strongholdtype)
@@ -11,6 +11,7 @@ admin.site.register(Strongholds)
 admin.site.register(Army)
 admin.site.register(Detachment)
 admin.site.register(Order)
+admin.site.register(Player)
 
 
 # Register your models here.
