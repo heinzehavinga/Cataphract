@@ -7,13 +7,14 @@ import requests
 load_dotenv() 
 import time
 
-
+django_url = os.getenv('DJANGO_URL')
+django_port = os.getenv('DJANGO_PORT')
 
 def format_army_sheet(json):
     message = f'**Commander: {json["commander"]} (age: {json["age"]})** \n'
-    message += f'Infantry 4,600 Cavalry 600 Wagons 25 NC 1,300 // {json["army_length"]} miles \n' #TODO: calc unit totals
+    message += f'{json["army_overview"]} \n' 
     message += '\n'
-    message += f'Morale {json["morale"]} \n'
+    message += f'Morale {int(json["morale"])} \n'
     message += '\n'
     message += f'Supplies {json["supplies"]}/{json["capacity"]}\n'
     message += f'     Uses {json["supplies_per_day"]} supplies per day\n'
@@ -62,8 +63,14 @@ class CataphractBot(discord.Client):
         if message.content == 'Bot, how goes the game?':
             await message.channel.send(f'The game hasn\'t started yet, {message.author.mention}')
 
+        
+        #TODO: How would we undo a tick?
+        if '/tick' in message.content.lower():
+            await self.update_world()
+            await message.channel.send('Setting game forward one tick')
+
         if '/listcommander' in message.content.lower():
-            r = requests.get('http://127.0.0.1:8000/cataphract/api/commanders/', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD')))
+            r = requests.get(f'http://{django_url}:{django_port}/cataphract/api/commanders/', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD')))
             commanders = r.json()
             commander_list_message =  f"Of course {message.author.mention}, Here is a list of all commanders in the game:\n"
             
@@ -72,15 +79,32 @@ class CataphractBot(discord.Client):
             
             await message.channel.send(commander_list_message)
 
+        if '/moralecheck' in message.content.lower():
+            r = requests.get(f'http://{django_url}:{django_port}/cataphract/moralecheck/{message.author.id}', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD')))
+            response = r.json()
+            morale_outcome =  f"Hey {message.author.mention}, Here is the result of your morale check:\n"
+            
+            morale_outcome += response['outcome']
+            
+            await message.channel.send(morale_outcome)
+
         if '/armysheet' in message.content.lower():
-            r = requests.get(f'http://127.0.0.1:8000/cataphract/commandersheet/{message.author.id}', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD')))
+            r = requests.get(f'http://{django_url}:{django_port}/cataphract/commandersheet/{message.author.id}', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD')))
             sheet = r.json()
             sheet_message = format_army_sheet(sheet)
             
             await message.channel.send(sheet_message)
 
+        if '/calculaterecruit' in message.content.lower():
+            r = requests.get(f'http://{django_url}:{django_port}/cataphract/calculaterecruit/{message.author.id}', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD')))
+            sheet = r.json()
+            sheet_message = format_army_sheet(sheet)
+                
+            await message.channel.send(sheet_message)
+
+
         if '/showmap' in message.content.lower():
-            r = requests.get('http://127.0.0.1:8000/static/test.png', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD'))) #This will be a API call to dynamically generate image instead of static file.
+            r = requests.get(f'http://{django_url}:{django_port}/static/test.png', auth=(os.getenv('API_USER'), os.getenv('API_PASSWORD'))) #This will be a API call to dynamically generate image instead of static file.
             with io.BytesIO() as image_binary:
                 image_binary.write(r.content)
                 image_binary.seek(0)
@@ -168,8 +192,12 @@ class CataphractBot(discord.Client):
     async def before_my_task(self):
         await self.wait_until_ready()  # wait until the bot logs in
 
-intents = discord.Intents(messages=True, guilds=True, message_content = True, members = True)
-client = CataphractBot(intents=intents)
-client.run(os.getenv('DISCORD_TOKEN'))
+
+
+if __name__ == '__main__':
+    intents = discord.Intents(messages=True, guilds=True, message_content = True, members = True)
+    client = CataphractBot(intents=intents)
+    
+    client.run(os.getenv('DISCORD_TOKEN'))
 
 
