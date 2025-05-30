@@ -10,6 +10,9 @@ class Faction(models.Model):
         return self.name
 
 
+#TODO: add World object, for map editor things (like world width and height)
+#TODO: add Discord object, for channel id and such (THis could also be a generic game object later, but not now)
+
 #Check the wiki for the models
 class Unittype(models.Model): #Should Wagon, Non combatant be included.
     list_display = ("name", "road_speed", "scout_distance",)
@@ -49,6 +52,12 @@ class Region(models.Model):
     def __str__(self):
         return self.name
 
+    @property
+    def recruit_infantry(self):
+        "Returns infantry recruit total"
+        hexes = self.hex_set.all()
+        return round(hexes.aggregate(Sum('settlement_score'))['settlement_score__sum'],-2)
+    
 class Hex(models.Model):
     list_display = ("region", "x", "y", "settlement_score")
     x = models.IntegerField(default=0)
@@ -108,9 +117,9 @@ class Army(models.Model):
     list_display = ("name", "commander")
     name = models.CharField(max_length=200)
     bio = models.TextField()
-    commander = models.ForeignKey(Commander, on_delete=models.PROTECT, blank=True)
+    commander = models.ForeignKey(Commander, on_delete=models.PROTECT, blank=True, null=True)
     owner = models.ForeignKey(Faction, on_delete=models.PROTECT, blank=True)
-    location = models.ForeignKey(Hex, on_delete=models.PROTECT) # Only needed when army has no commander, These will be a single detachment (special unit types like messenger?)
+    location = models.ForeignKey(Hex, on_delete=models.PROTECT, blank=True, null=True) # Only needed when army has no commander, These will be a single detachment (special unit types like messenger?)
     def __str__(self):
         return self.name
     
@@ -118,7 +127,6 @@ class Army(models.Model):
     def morale(self):
         "Returns morale for army"
         detachements = self.detachment_set.all()
-        print(detachements.aggregate(Sum('morale')))
         return detachements.aggregate(Sum('morale'))['morale__sum']/len(detachements)
 
     @property
@@ -144,8 +152,6 @@ class Army(models.Model):
     @property
     def supplies_per_day(self):
         "Returns the required supplies per day"
-        print("SUPPLIES PER DAY!")
-        print(sum(d.supplies_per_day for d in self.detachment_set.all()))
         return sum(d.supplies_per_day for d in self.detachment_set.all())
     
     @property

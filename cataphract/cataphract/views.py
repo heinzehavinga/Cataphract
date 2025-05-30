@@ -99,7 +99,7 @@ class CalculateRecruit(APIView):
     # authentication_classes = [authentication.TokenAuthentication] #This might be something cool to look into
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, discordid, format=None):
+    def get(self, request, discordid, format=None):
         """
         Returns a calculation of what sort of army you would recruit.
         """

@@ -11,7 +11,9 @@ django_url = os.getenv('DJANGO_URL')
 django_port = os.getenv('DJANGO_PORT')
 
 def format_army_sheet(json):
-    message = f'**Commander: {json["commander"]} (age: {json["age"]})** \n'
+    message = ""
+    if "commander" in json.keys():
+        message += f'**Commander: {json["commander"]} (age: {json["age"]})** \n'
     message += f'{json["army_overview"]} \n' 
     message += '\n'
     message += f'Morale {int(json["morale"])} \n'

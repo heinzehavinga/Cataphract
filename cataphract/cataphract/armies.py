@@ -171,49 +171,53 @@ def caculateRecruitment(faction, region, createArmy = False):
 
     hexes = region.hex_set.all()
 
-    unit_types = Unittype.objects.filter(Q(unique_type=False) | Q(unique_type_faction_isnull=faction))
+    unit_types = Unittype.objects.filter(Q(unique_type=False) | Q(unique_type_faction=faction))
     
-    new_army = Army(name=f"{Region} {faker.color_name()} new army", owner=faction)
-    army = { k: Detachment(unittype=k, army=new_army, owner=faction) for k in unit_types }
+    new_army = Army(name=f"{region.name} {faker.color_name()} new army", owner=faction)
+    army = { k.name: Detachment(unittype=k, army=new_army) for k in unit_types }
     total_units = 0
     wagons = 0
     total_non_combatants = 0
     
-    for hex in hexes:
-        hex.settlement_score
-        good_country = True #TODO: When is country not good?
-        
-        for detachtment in army:
-                unit_type = detachtment.unittype_set.first()
-                if good_country:
-                    units = hex.settlement_score * unit_type.recruitement_rate_good_country
-                else: 
-                    units = hex.settlement_score * unit_type.recruitement_rate
-
-                non_combatants = units * unit_type.default_non_combatant
-                detachtment.units += units
-                detachtment.non_combantants += non_combatants
-                total_non_combatants += non_combatants
-                total_units += units
-
-        if good_country:
-            wagons += hex.settlement_score*0.05 #Todo This should not be hard coded.
-        
-    #Spread wagons amongst detachtments 
-    wagons_per_detachment = round(wagons/len(army))
+    infantry_total = region.recruit_infantry
     
-    for detachment in army:
-        detachment.units = round(detachment.units/100,0)*100 #Round unit amounts to nearest 100 units
-        detachment.wagons = wagons_per_detachment
-        detachment.supplies = detachment.carrying_weight
+    good_country = True #TODO when is country good?
+    
+    wagons = 0
+    if good_country:
+        wagons = infantry_total*0.05 #Todo This should not be hard coded.
+    wagons_per_detachment = round(wagons/len(army.values()))
+    
+
+    for detachtment in army:
+        
+        unit_type = army[detachtment].unittype
+        
+        if good_country:
+            units = infantry_total * unit_type.recruitement_rate_good_country
+        else: 
+            units = infantry_total * unit_type.recruitement_rate
+
+        non_combatants = units * unit_type.default_non_combatant
+        army[detachtment].units = units
+        army[detachtment].non_combantants += non_combatants
+        total_non_combatants = non_combatants
+        army[detachtment].wagons = wagons_per_detachment
+        army[detachtment].supplies = army[detachtment].carrying_weight #Why do horses get more supplies?
+        total_units += units
 
     #TODO: If a unique unit type present, substract the amount of unique units from their basic version recruitment numbers    
     # .delete() original detachment if 0 is present
+    new_army.save()
+    Detachment.objects.bulk_create(army.values())
+    print(army) 
     
-    if createArmy:
-        new_army.save()
-        for detachment in army:
-            detachment.save()
-     
-    else:
-        return ArmyOverview(army=new_army)
+    sheet = ArmyOverview(army=new_army) 
+    if createArmy == False:
+        for detachment in new_army.detachment_set.all():
+            print(detachment, detachment.supplies, detachment.carrying_weight)
+            # unit = Detachment.objects.get(name=army[detachtment].name)
+            detachment.delete() #TODO: Can we do this without saving and writing the army and detachments to the database?
+        new_army.delete()
+ 
+    return sheet
