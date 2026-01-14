@@ -14,8 +14,10 @@ Put in a username and password for the Discord bot user
 An automation suite for running a game of Cataphract,
 connects to PostGRES database
 
+- Don't forget your makemigrations, migrate, runserver commands ;)
 
-### Enviroment varaibles for cataphracts
+
+### Enviroment varaibles for cataphracts Django
 Put a .env file in the cataphracts in dir
 DB_NAME = "Name of your database"
 DB_USER = "database user"
@@ -31,9 +33,17 @@ https://discordpy.readthedocs.io/en/latest/discord.html
 
 https://discord.com/developers/applications
 
-### Enviroment varaibles for cataphracts
-DISCORD_TOKEN
-
+### Enviroment varaibles for cataphracts Discord bot
+DISCORD_TOKEN = "Token you get from Discord to connect your bot"
+API_USER= 
+API_PASSWORD= 
+DJANGO_URL = 
+DJANGO_PORT = 
 
 ## Map
-Will be put into the Django installation?
+We'll put an initial scenario into the Django fixtures
+Map editor is something you will run locally?
+
+## License
+CC license - we used sprite and portraits from the excellent
+Battle for Wesnoth!

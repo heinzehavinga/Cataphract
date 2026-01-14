@@ -1,27 +1,51 @@
 from django.db import models
 from faker import Faker
-from django.db.models import Sum
+from django.db.models import Sum, Q, Max, Avg
+import math
+from datetime import datetime
 faker = Faker('en_GB')
 
+
+#TODO: add World object, for map editor things (like world width and height)    
+#TODO: add Discord object, for channel id and such (THis could also be a generic game object later, but not now)
+class World(models.Model):
+    discord_guild = models.IntegerField(default=0)
+    discord_channel_id = models.IntegerField(default=0)
+    discord_channel_name = models.CharField(default="cataphracts")
+    world_name = models.CharField(default=faker.last_name)
+    world_width = models.IntegerField(default=0) #width in hexes
+    world_height = models.IntegerField(default=0) #height in hexes #TODO make hexes automatically when creating world?
+    last_tick  = models.DateTimeField("last ingame tick", default=datetime.now)
+    tick_speed = models.IntegerField(default=4) #Hours between each tick
+
+# class Referee: #todo these should be Django users instead, as they might need to login to do some things
+#     name = models.CharField(max_length=200, default=faker.name)
+#     discord_id = models.BigIntegerField(default=0)
+
+
+# class Modifier(models.Model): #TODO: This is a big one, to make traits, items influence all sorts of rules (trait and item should be child classes of general modifier, maybe weather too?)
+# class Weathertypes(models.Model): #TODO: This is a big one, to do weahter in this game?
+
+
 class Faction(models.Model):
+    #TODO: Add a banner image
     name = models.CharField(max_length=200, default=faker.first_name)
     bio = models.TextField(help_text = "A little bio for the faction, who are they, what drives them etc.")
     def __str__(self):
         return self.name
 
 
-#TODO: add World object, for map editor things (like world width and height)
-#TODO: add Discord object, for channel id and such (THis could also be a generic game object later, but not now)
-
 #Check the wiki for the models
-class Unittype(models.Model): #Should Wagon, Non combatant be included.
+class Unittype(models.Model): #Should Wagon, Non combatant be included?
     list_display = ("name", "road_speed", "scout_distance",)
     name = models.CharField(max_length=200, default=faker.first_name)
+    description = models.TextField(help_text = "A little description of the unit")
     road_speed = models.IntegerField(default=0)
     forced_march_speed = models.IntegerField(default=0)
     offroad_speed = models.IntegerField(default=0) #if 0, no offroading with this unit
     scout_distance = models.IntegerField(default=0)
     supplies_per_day = models.IntegerField(default=0)
+    harrier_bonus = models.IntegerField(default=0)
     carry_weight = models.IntegerField(default=0) #Total carry weight, including Loot and Supplies
     units_per_mile = models.IntegerField(default=0)
     default_non_combatant = models.FloatField(default=0.25) #How many non combantants does this detachment has per default?
@@ -43,7 +67,7 @@ class Strongholdtype(models.Model): #Could this be a sub child of landmark?
     def __str__(self):
         return self.name
 
-class Region(models.Model):
+class Region(models.Model): #TODO: Regions no longer exsist in rulesset
     list_display = ("name", "faction", "last_recruitement")
     name = models.CharField(max_length=200, default=faker.name)
     bio = models.TextField()
@@ -62,14 +86,41 @@ class Hex(models.Model):
     list_display = ("region", "x", "y", "settlement_score")
     x = models.IntegerField(default=0)
     y = models.IntegerField(default=0)
-    region = models.ForeignKey(Region, on_delete=models.PROTECT, blank=True, null=True)
-    settlement_score = models.IntegerField(default=20)
+    ##Type of landscape
+    type = models.IntegerField(default=0)
+
+    region = models.ForeignKey(Region, on_delete=models.PROTECT, blank=True, null=True) #TODO: Should be change to stronghold
+    settlement_score = models.IntegerField(default=20) #TODO: create algorithm to calculate this automatically
+    ## All roads start in the middle 1 top and than clockwise
     road = models.BooleanField(default=True)
+    
+    #Based on ribs 1 is the top rib and then clockwise.
     river = models.IntegerField(default=0) #probably a 123456, with every side being a number so a river of 234 has river on sides 2 and 3 and 4
     last_foraged = models.DateTimeField("last foraging")
+    foraged_amount_season = models.IntegerField(default=0) #Should reset every season TODO: Add season trigger
     def __str__(self):
         return f'{self.x}, {self.y}'
 
+    @property
+    def get_neighbours(self):
+        "Returns Neighbouring hexes and the travel costs."
+#Please add a description of this to the wiki!
+        #Check if x position is even or uneven.
+        # in case over even, hex left is, left Down 
+        # In case of odd, hex left is left up
+
+#Getting neighbors
+#Get all surrounding hexes, so x same and Y one above and one below.
+# If odd neighbour are x of the same y-coordinate and one y coordinate down
+# If even neighbour are x of the same y-coordinate and one y coordinate up
+        hexes = self.hex_set.filter()
+
+#Then check if:
+    #Do we have a road from this hex to that hex, than score +1
+    #Does this hex, or the target hex have a river on the rib, then score -1
+    #is the target hex A uncrossable terrain type? the score -100
+    #return dict with scores
+        return round(hexes.aggregate(Sum('settlement_score'))['settlement_score__sum'],-2)
 
 class Player(models.Model):
     name = models.CharField(max_length=200, default=faker.name)
@@ -84,6 +135,8 @@ class Commander(models.Model): #Need to add perks and feats! How will we program
     player_id = models.ForeignKey(Player, on_delete=models.PROTECT, blank=True, null=True) #TODO: would this be better to make this relation the other way around?
     age = models.IntegerField(default=18) #This should probably be a DateField
     bio = models.TextField()
+    portrait = models.ImageField(upload_to='portraits/') #TODO: does this allow to look at already uploaded files
+    map_sprite = models.ImageField(upload_to='units/')
     faction = models.ForeignKey(Faction, on_delete=models.PROTECT)
     location = models.ForeignKey(Hex, on_delete=models.PROTECT)
     def __str__(self):
@@ -120,6 +173,7 @@ class Army(models.Model):
     commander = models.ForeignKey(Commander, on_delete=models.PROTECT, blank=True, null=True)
     owner = models.ForeignKey(Faction, on_delete=models.PROTECT, blank=True)
     location = models.ForeignKey(Hex, on_delete=models.PROTECT, blank=True, null=True) # Only needed when army has no commander, These will be a single detachment (special unit types like messenger?)
+    harried = models.BooleanField(default=False) 
     def __str__(self):
         return self.name
     
@@ -127,8 +181,12 @@ class Army(models.Model):
     def morale(self):
         "Returns morale for army"
         detachements = self.detachment_set.all()
-        return detachements.aggregate(Sum('morale'))['morale__sum']/len(detachements)
+        return math.floor(detachements.aggregate(Avg('morale'))['morale__avg'])
 
+    @property
+    def scout_distance(self):
+        "Returns scouting range based on unit with biggest scouting randge"
+        return self.detachment_set.all().aggregate(Max('scout_distance'))['scout_distance__max']
     @property
     def supplies(self):
         "Returns supplies army carry"
@@ -145,6 +203,11 @@ class Army(models.Model):
         return round(sum(d.carrying_weight for d in self.detachment_set.all()),0)
     
     @property
+    def carrying_weight_left(self):
+        "Returns maximum carrying weight for complete army"
+        return round(sum(d.carrying_weight_left for d in self.detachment_set.all()),0)
+
+    @property
     def travel_length(self):
         "Returns Total travel length of army"
         return round(sum(d.travel_length for d in self.detachment_set.all()),2)
@@ -153,6 +216,13 @@ class Army(models.Model):
     def supplies_per_day(self):
         "Returns the required supplies per day"
         return sum(d.supplies_per_day for d in self.detachment_set.all())
+    
+    @property
+    def supplies_days_left(self):
+        "Returns the required supplies per day"
+        supplies_per_day = sum(d.supplies_per_day for d in self.detachment_set.all())
+        supplies = sum(d.supplies for d in self.detachment_set.all())
+        return round(supplies_per_day/supplies, 2)
     
     @property
     def non_combantants(self):
@@ -169,6 +239,7 @@ class Detachment(models.Model):
     wagons = models.IntegerField(default=0)
     supplies = models.IntegerField(default=0)
     loot = models.IntegerField(default=0)
+    siege_tower = models.IntegerField(default=0) #We assume one siege tower is 1 wagon to keep the math simple
     personal_loot = models.IntegerField(default=0)
     morale = models.IntegerField(default=9)
     army = models.ForeignKey(Army, on_delete=models.PROTECT, null=True, blank=True)    
@@ -187,6 +258,10 @@ class Detachment(models.Model):
         weight += self.wagons * 500 #TODO: don't hardcode carry capacity wagons
         weight += self.non_combantants * 15 #TODO: don't hardcode carry capacity non combatants
         return round(weight,0)
+    
+    @property
+    def carrying_weight_left(self):
+        return self.carrying_weight - (self.supplies+self.loot+self.personal_loot+(self.siege_tower*500)) #TODO: Uses hardcoded wagons capacity.
 
     @property
     def travel_length(self):
@@ -197,23 +272,51 @@ class Detachment(models.Model):
         return round(length,2)
     
     @property
+    def scout_distance(self):
+        "Returns the required supplies per day"
+        return self.unittype.scout_distance
+    
+    @property
     def supplies_per_day(self):
         "Returns the required supplies per day"
         return self.units * self.unittype.supplies_per_day
-        
 
+    @property
+    def supplies_days_left(self):
+        "Returns the required supplies per day"
+        return round(self.supplies_per_day/self.supplies, 2)
 
+class playerMessage(models.Model):
+    sending_commander = models.ForeignKey(Commander, on_delete=models.PROTECT, related_name='sending_commander')
+    recieving_commander = models.ForeignKey(Commander, on_delete=models.PROTECT, related_name='recieving_commander')
+    contents = models.TextField(help_text = "Message content")
+    sent = models.DateTimeField("start of order")
+    recieved = models.BooleanField(default=True)
+    completed = models.BooleanField(default=True)
+
+# class News(models.Model): #TODO: How do you check if News has been delivered to every player?
+
+class RefMessage(models.Model):
+    #TODO: make it possible to link to relevant Commanders (for setting position or states)
+    message = models.TextField(blank=True, default=faker.catch_phrase)
+    discord_url = models.TextField(blank=True, null=True)
+    completed = models.BooleanField(default=True)
+    completed_by = models.TextField(blank=True, default="ref") #TODO: This should be based on referee user object
 
 class Order(models.Model):
+    #TODO: I would like to be able have one order in the queue, so pleople can do "When I complete rest, move to X. Or when move to X is complete, Forage."
     list_display = ("order_types", "commander", "date_start", "date_end")
-    order_types = ( #We need to create a complete order list
+    order_types = ( #TODO: make this a seperate table with standard durations etc.
         (1, "Move"),
         (2, "Rest"),
         (3, "Build"),
-        (4, "Recruit"), #takes a month, commander is free to move on, should that be a Boolean field?
-        (5, "Forage"), #how long does foraging take?
+        (4, "Recruit"), #takes a month, commander is free to move on, should that be a Boolean field? TODO: Is this an area order? What prevents commanders to recruit in every stronghold?
+        (5, "Forage"), #Takes a day
         (6, "Siege"),
-        (7, "Unique")
+        (7, "Harrying - killing soldiers"), #Takes a day
+        (8, "Harrying - torching supplies"), #Takes a day
+        (9, "Harrying - stealing loot"), #Takes a day
+        (10, "Operations")
     )
     order = models.IntegerField(choices=order_types, default=1)
     unique_description = models.TextField(blank=True)
@@ -221,7 +324,21 @@ class Order(models.Model):
     date_start = models.DateTimeField("start of order")
     date_end = models.DateTimeField("end of order", null=True, blank=True)
     completed = models.BooleanField(default=True)
+    week_counter = models.IntegerField(default=0) #Number to tell how many week bonuses have been giving (morale, siege threshold)
     start_hex = models.ForeignKey(Hex, on_delete=models.PROTECT, null=True,  blank=True, related_name='starting_hex') #TODO: This should be the current location of the commander
     end_hex = models.ForeignKey(Hex, on_delete=models.PROTECT, null=True,  blank=True, related_name='end_hex')
+    selected_detachment =  models.ForeignKey(Detachment, on_delete=models.PROTECT, null=True,  blank=True, related_name='end_hex') #Only to be used with Harried commands
+    target_army = models.ForeignKey(Army, on_delete=models.PROTECT, null=True,  blank=True, related_name='target_army') #Only to be used with Harried commands
+    
+    def save(self):
+        #TODO: Make an order always start and end at a tick?
+        # self.date_start = 
+        # self.date_end =
+        #TODO: How does this work for a move order?!
+        for order in self.commander.order_set.filter(~Q(order=4)):
+            if self.date_start < order.date_end:
+                self.date_start = order.date_end
+        super(Order, self)
+
     def __str__(self):
         return f'{self.commender}: {self.order_types} DATE START DATE END'

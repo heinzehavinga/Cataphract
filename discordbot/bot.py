@@ -20,6 +20,7 @@ def format_army_sheet(json):
     message += '\n'
     message += f'Supplies {json["supplies"]}/{json["capacity"]}\n'
     message += f'     Uses {json["supplies_per_day"]} supplies per day\n'
+    message += f'     {json["supplies_days_left"]} left before supplies run out.\n'
     message += '\n'
     message += f'Detachments:\n'
     for detachment in json["detachments"]:
@@ -45,6 +46,7 @@ def format_army_sheet(json):
 # https://discordtemplates.me/
 #Is there such a thing as discord bot templates? Can we autogenerate the Ouath2 token from the bot?!?!
     #Maybe run docker without token and it spits out the link to you, you add it to the server and it gives you a token you need.
+    #Or create a little github page that generates the correct Oath2 settings
 
 #We need a startup script that show you if you've set all your permissions correctly
 
@@ -53,18 +55,18 @@ class CataphractBot(discord.Client):
     async def on_ready(self):
         print('Logged on as', self.user)
 
-
+    #TODO: add a way that if order is given, bot repsonds with a order description and user confirms with a thumbs up emote.
+    #TODO: I would like to be able have one order in the queue, so pleople can do "When I complete rest, move to X. Or when move to X is complete, Forage."
     async def on_message(self, message): #Little function to test if bot if working, just to make sure
         
         print(message.author.name)
-        print(message.author.mutual_guilds) #Doesn't work, is guild broken?
+        print(message.author.mutual_guilds) 
 
         if message.author == self.user:
             return
 
         if message.content == 'Bot, how goes the game?':
             await message.channel.send(f'The game hasn\'t started yet, {message.author.mention}')
-
         
         #TODO: How would we undo a tick?
         if '/tick' in message.content.lower():
@@ -147,9 +149,11 @@ class CataphractBot(discord.Client):
         #             game_channel = channel
         #             print(game_channel.id)
 
-        game_channel = self.get_channel(1369341115018510367)
+        game_channel = self.get_channel(1369341115018510367) #TODO: Get this form Django
         
+        #It will be one massive Django return object that make sure everyone knows what happened to their command
 
+        
 
         ##Create private thread (THIS SNIPPET WORKS, DON'T DELETE)
         # thread = await game_channel.create_thread(name="private test thread", type=None, reason="Used when player are at the same location", invitable=False)
@@ -178,7 +182,7 @@ class CataphractBot(discord.Client):
         #This is probably also the place, the referees talk to the commander, we need to support multiple referees, so this is probably a thread.
 
         #Are commaners no longer on the same hex? Close/Archive their thread!
-        # active_threads() Get all threads
+        # active_threads() Get all threads, that remove their rights to post (don't delete thread)
         # https://discordpy.readthedocs.io/en/latest/api.html#discord.Thread.edit
 
         #Are several commanders on the same hex? Let's open a challen for them!
