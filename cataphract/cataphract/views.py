@@ -6,6 +6,7 @@ from .serializers import CommanderSerializer
 from django.db.models import Q
 from .models import *
 from .armies import *
+from .orders import *
 from .mapimage import *
 import random, math
 from datetime import datetime, timedelta
@@ -81,10 +82,8 @@ class Tick(APIView):
         
         for order in Order.filter(order__gte=7, order__lte=9, date_end__gte=now, completed=False):
             
-            
 # A detachment may harry an army within scouting range. 
 
-            
             source_army = order.commander.army_set.first()
             target_army = order.target_army_set.first()
             #Check if army is within distance
@@ -198,6 +197,9 @@ class Commandersheet(APIView):
         player = Player.objects.get(discord_id=discordid)
         commander = player.commander_set.first()
         response['commander'] = commander.name
+        response['relation'] = f"{commander.relation_name} of {commander.relation_commander}"
+        response['traits'] = ','.join(Trait.objects.filter(owner__id=commander.id))
+        f"{commander.relation_name} of {commander.relation_commander}"
         response['age'] = commander.age
         response['faction'] = commander.faction.name
         army = commander.army_set.first()

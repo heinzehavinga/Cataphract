@@ -1,7 +1,7 @@
 from django.db import models
 from faker import Faker
 from django.db.models import Sum, Q, Max, Avg
-import math
+import math, random
 from datetime import datetime
 faker = Faker('en_GB')
 
@@ -15,6 +15,7 @@ class World(models.Model):
     world_name = models.CharField(default=faker.last_name)
     world_width = models.IntegerField(default=0) #width in hexes
     world_height = models.IntegerField(default=0) #height in hexes #TODO make hexes automatically when creating world?
+    start_time = models.DateTimeField("when did the game start", default=datetime.now)
     last_tick  = models.DateTimeField("last ingame tick", default=datetime.now)
     tick_speed = models.IntegerField(default=4) #Hours between each tick
 
@@ -23,7 +24,37 @@ class World(models.Model):
 #     discord_id = models.BigIntegerField(default=0)
 
 
-# class Modifier(models.Model): #TODO: This is a big one, to make traits, items influence all sorts of rules (trait and item should be child classes of general modifier, maybe weather too?)
+class Modifier(models.Model): 
+    #TODO: This should probably be a longer list but for know it's fine.
+    road_speed_bonus = models.IntegerField(default=0)
+    forced_march_speed_bonus = models.IntegerField(default=0)
+    offroad_speed_bonus = models.IntegerField(default=0) #if _bonus0, no offroading with this unit
+    scout_distance_bonus = models.IntegerField(default=0)
+    supplies_per_day_bonus = models.IntegerField(default=0)
+    harrier_bonus_bonus = models.IntegerField(default=0)
+    carry_weight_bonus = models.IntegerField(default=0) #Total carry weight, including Loot and Supplies
+    carry_weight_modifier = models.FloatField(default=0.0) #Total carry weight, including Loot and Supplies
+    units_per_mile_bonus = models.IntegerField(default=0)
+    default_non_combatant_modifier = models.FloatField(default=0.0) #How many non combantants does this detachment has per default?
+    pick_up_non_combatant_modifier = models.FloatField(default=0.0) #How many non combantants does this detachment has per default?
+    recruitement_rate_bonus = models.FloatField(default=0)
+    resting_morale_bonus = models.IntegerField(default=0)
+    besiege_bonus = models.IntegerField(default=0)
+    defend_stronghold_bonus = models.IntegerField(default=0)
+    duelist_bonus = models.IntegerField(default=0.0)
+    casualties_modifier = models.FloatField(default=0.0)
+    capturechance_bonus = models.IntegerField(default=0)
+    pillage_chance_modifier = models.FloatField(default=0)
+    revolt_chance_bonus = models.IntegerField(default=0)
+    defend_threshold_modifier = models.FloatField(default=0.0)
+    cavalry_scout_bonus = models.IntegerField(default=0)
+    morale_roll_bonus = models.IntegerField(default=0)
+    loot_found_modifier = models.FloatField(default=0.0)
+    forage_modifier = models.FloatField(default=0.0)
+    siege_engine_build_modifier = models.FloatField(default=0.0)
+    morale_loss_battle_modifier = models.FloatField(default=0.0)
+    recruitement_rate_good_country_bonus = models.FloatField(default=0) #per settlementscore on hex
+
 # class Weathertypes(models.Model): #TODO: This is a big one, to do weahter in this game?
 
 
@@ -135,14 +166,98 @@ class Commander(models.Model): #Need to add perks and feats! How will we program
     player_id = models.ForeignKey(Player, on_delete=models.PROTECT, blank=True, null=True) #TODO: would this be better to make this relation the other way around?
     age = models.IntegerField(default=18) #This should probably be a DateField
     bio = models.TextField()
-    portrait = models.ImageField(upload_to='portraits/') #TODO: does this allow to look at already uploaded files
-    map_sprite = models.ImageField(upload_to='units/')
+    # portrait = models.ImageField(upload_to='portraits/', blank=True, null=True) #TODO: does this allow to look at already uploaded files
+    # map_sprite = models.ImageField(upload_to='units/', blank=True, null=True)
+    relation_commander = models.ForeignKey("self", on_delete=models.PROTECT, blank=True, null=True) 
+    relation_name = models.CharField(max_length=200, blank=True, null=True)
     faction = models.ForeignKey(Faction, on_delete=models.PROTECT)
     location = models.ForeignKey(Hex, on_delete=models.PROTECT)
     def __str__(self):
         return self.name
     #Add attributes, items etc.
 
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            # This code only happens if the objects is
+            # not in the database yet. Otherwise it would
+            # have pk
+            if self.relation_commander is not None:
+                relation = random.randint(1,17)
+                if relation == 1:
+                    self.relation_name = "Child"
+                    self.age = 14+ random.randint(1,6)+random.randint(1,6)+random.randint(1,6)
+                elif relation == 2:
+                    self.relation_name = "Sibling"
+                    self.age = 20+ random.randint(1,20)+random.randint(1,20)
+                elif relation == 3:
+                    self.relation_name = "Parent"
+                    self.age = 30+ random.randint(1,20)+random.randint(1,20)+random.randint(1,20)
+                elif relation == 4:
+                    self.relation_name = "Niece/Nephew"
+                    self.age = 16+ random.randint(1,20)
+                elif relation == 5:
+                    self.relation_name = "Uncle/Aunt"
+                    self.age = 30+ random.randint(1,20)+random.randint(1,20)+random.randint(1,20)
+                elif relation == 6:
+                    self.relation_name = "Cousin"
+                    self.age = 20+ random.randint(1,20)+ random.randint(1,20)
+                #Original 7 and 8 result are skipped for now
+                elif relation == 7:
+                    self.relation_name = "Spouse"
+                    self.age = 20+ random.randint(1,20)+ random.randint(1,20)
+                elif relation == 8:
+                    self.relation_name = "Friend"
+                    self.age = 20+ random.randint(1,20)+ random.randint(1,20)
+                elif relation == 9:
+                    self.relation_name = "Rival"
+                    self.age = 20+ random.randint(1,20)+ random.randint(1,20)
+                elif relation == 10:
+                    self.relation_name = "Student"
+                    self.age = 16+ random.randint(1,20)
+                elif relation == 11:
+                    self.relation_name = "Teacher"
+                    self.age = 30+ random.randint(1,20)+random.randint(1,20)+random.randint(1,20)
+                elif relation == 12:
+                    self.relation_name = "Priest"
+                    self.age = 30+ random.randint(1,20)+random.randint(1,20)+random.randint(1,20)
+                elif relation == 13:
+                    self.relation_name = "Councilor"
+                    self.age = 20+ random.randint(1,20)+random.randint(1,20)+random.randint(1,20)
+                elif relation == 14:
+                    self.relation_name = "Bodyguard"
+                    self.age = 20+ random.randint(1,20)+random.randint(1,20)
+                elif relation == 15:
+                    self.relation_name = "Quartermaster"
+                    self.age = 20+ random.randint(1,20)+random.randint(1,20)
+                elif relation == 16:
+                    self.relation_name = "Creditor"
+                    self.age = 20+ random.randint(1,20)+random.randint(1,20)
+                elif relation == 17:
+                    self.relation_name = "Favorite"
+                    self.age = 16+ random.randint(1,20)+random.randint(1,20)
+                
+        super(Commander, self).save(*args, **kwargs)        
+        #Generate X random traits based on 
+        if self.age > 20:
+            trait_amount = 1 + math.floor((self.age-20)/10)
+            
+            traits = Trait.objects.order_by('?').all()[:trait_amount]
+            for trait in traits:
+                trait.owners.add(self)
+                trait.save()
+        
+
+class Item(Modifier):
+    name = models.CharField(max_length=200, default=faker.first_name)
+    desc = models.TextField() #Description of item, also include any roleplaying qualities of the item (owner of this sword is seen as the king of XY, etc.)
+    owner = models.ForeignKey(Commander, on_delete=models.PROTECT, blank=True, null=True) #What happens if Commander dies?
+
+class Trait(Modifier): 
+    name = models.CharField(max_length=200, default=faker.first_name)
+    desc = models.TextField() #Description of item, also include any roleplaying qualities of the item (owner of this sword is seen as the king of XY, etc.)
+    owners = models.ManyToManyField(Commander, blank=True, null=True) #TODO: Is this the right way of doing this?
+    def __str__(self):
+        return self.name
 
 class ObservedHex(Hex): #Can we inheret
     Commander = models.ForeignKey(Commander, on_delete=models.PROTECT, blank=True, null=True) #These should be deleted if Commander dies?
@@ -255,13 +370,13 @@ class Detachment(models.Model):
     def carrying_weight(self):
         "Returns detachment carrying limit"
         weight = self.unittype.carry_weight*self.units
-        weight += self.wagons * 500 #TODO: don't hardcode carry capacity wagons
+        weight += self.wagons * 1000 #TODO: don't hardcode carry capacity wagons
         weight += self.non_combantants * 15 #TODO: don't hardcode carry capacity non combatants
         return round(weight,0)
     
     @property
     def carrying_weight_left(self):
-        return self.carrying_weight - (self.supplies+self.loot+self.personal_loot+(self.siege_tower*500)) #TODO: Uses hardcoded wagons capacity.
+        return self.carrying_weight - (self.supplies+self.loot+self.personal_loot+(self.siege_tower*1000)) #TODO: Uses hardcoded wagons capacity.
 
     @property
     def travel_length(self):

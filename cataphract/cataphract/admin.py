@@ -12,6 +12,7 @@ admin.site.register(Army)
 admin.site.register(Detachment)
 admin.site.register(Order)
 admin.site.register(Player)
+admin.site.register(Trait)
 
 
 # Register your models here.

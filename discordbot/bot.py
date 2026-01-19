@@ -14,6 +14,8 @@ def format_army_sheet(json):
     message = ""
     if "commander" in json.keys():
         message += f'**Commander: {json["commander"]} (age: {json["age"]})** \n'
+        message += f'*{json["traits"]}* \n'
+        message += f'*{json["relation"]}* \n'
     message += f'{json["army_overview"]} \n' 
     message += '\n'
     message += f'Morale {int(json["morale"])} \n'
@@ -153,7 +155,7 @@ class CataphractBot(discord.Client):
         
         #It will be one massive Django return object that make sure everyone knows what happened to their command
 
-        
+
 
         ##Create private thread (THIS SNIPPET WORKS, DON'T DELETE)
         # thread = await game_channel.create_thread(name="private test thread", type=None, reason="Used when player are at the same location", invitable=False)
