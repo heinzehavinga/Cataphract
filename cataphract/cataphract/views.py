@@ -197,9 +197,14 @@ class Commandersheet(APIView):
         player = Player.objects.get(discord_id=discordid)
         commander = player.commander_set.first()
         response['commander'] = commander.name
-        response['relation'] = f"{commander.relation_name} of {commander.relation_commander}"
-        response['traits'] = ','.join(Trait.objects.filter(owner__id=commander.id))
-        f"{commander.relation_name} of {commander.relation_commander}"
+        response['relation'] = ""
+        if commander.relation_name is not None:
+            response['relation'] = f"{commander.relation_name} of {commander.relation_commander}"
+        
+        response['traits'] = ""
+        for trait in Trait.objects.filter(owners=commander):
+                response['traits'] += trait.__str__()
+
         response['age'] = commander.age
         response['faction'] = commander.faction.name
         army = commander.army_set.first()

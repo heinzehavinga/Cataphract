@@ -12,10 +12,13 @@ django_port = os.getenv('DJANGO_PORT')
 
 def format_army_sheet(json):
     message = ""
+    #TODO empty labels are stil printend
     if "commander" in json.keys():
         message += f'**Commander: {json["commander"]} (age: {json["age"]})** \n'
-        message += f'*{json["traits"]}* \n'
-        message += f'*{json["relation"]}* \n'
+        if json["traits"] is not "":
+            message += f'*Traits: {json["traits"]}* \n'
+        if json["relation"] is not "":
+            message += f'*{json["relation"]}* \n'
     message += f'{json["army_overview"]} \n' 
     message += '\n'
     message += f'Morale {int(json["morale"])} \n'
