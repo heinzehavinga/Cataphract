@@ -3,6 +3,10 @@ from faker import Faker
 from django.db.models import Sum, Q, Max, Avg
 import math
 from datetime import datetime
+from django.utils import timezone
+
+
+from .utils import hextype_to_name, is_fort
 faker = Faker('en_GB')
 
 
@@ -13,9 +17,7 @@ class World(models.Model):
     discord_channel_id = models.IntegerField(default=0)
     discord_channel_name = models.CharField(default="cataphracts")
     world_name = models.CharField(default=faker.last_name)
-    world_width = models.IntegerField(default=0) #width in hexes
-    world_height = models.IntegerField(default=0) #height in hexes #TODO make hexes automatically when creating world?
-    last_tick  = models.DateTimeField("last ingame tick", default=datetime.now)
+    last_tick  = models.DateTimeField("last ingame tick", default=timezone.now)
     tick_speed = models.IntegerField(default=4) #Hours between each tick
 
 # class Referee: #todo these should be Django users instead, as they might need to login to do some things
@@ -39,7 +41,7 @@ class Faction(models.Model):
 class Unittype(models.Model): #Should Wagon, Non combatant be included?
     list_display = ("name", "road_speed", "scout_distance",)
     name = models.CharField(max_length=200, default=faker.first_name)
-    description = models.TextField(help_text = "A little description of the unit")
+    description = models.TextField(help_text = "A little description of the unit", default="")
     road_speed = models.IntegerField(default=0)
     forced_march_speed = models.IntegerField(default=0)
     offroad_speed = models.IntegerField(default=0) #if 0, no offroading with this unit
@@ -67,12 +69,30 @@ class Strongholdtype(models.Model): #Could this be a sub child of landmark?
     def __str__(self):
         return self.name
 
+class Map(models.Model):
+    name = models.CharField(max_length=200, default=faker.country)
+    bio = models.TextField()
+    height = models.IntegerField(default=0)
+    width = models.IntegerField(default=0)
+    world = models.ForeignKey(World, on_delete=models.PROTECT, blank=False, null=False)
+    image = models.ImageField(upload_to='maps/', blank=True, null=True)
+
+    # def image_tag(self):
+    #     from django.utils.html import escape
+    #     return u'<img src="%s" />' % escape(<URL to the image>)
+    # image_tag.short_description = 'Image'
+    # image_tag.allow_tags = True
+
+    def __str__(self):
+        return self.name
+
 class Region(models.Model): #TODO: Regions no longer exsist in rulesset
     list_display = ("name", "faction", "last_recruitement")
-    name = models.CharField(max_length=200, default=faker.name)
+    name = models.CharField(max_length=200, default=faker.word)
+    map = models.ForeignKey(Map, on_delete=models.PROTECT, blank=True, null=True, related_name="regions")
     bio = models.TextField()
     faction = models.ForeignKey(Faction, on_delete=models.PROTECT, blank=True)
-    last_recruitement = models.DateTimeField("last recruitment")
+    last_recruitement = models.DateTimeField("last recruitment", default=timezone.now)
     def __str__(self):
         return self.name
 
@@ -81,14 +101,14 @@ class Region(models.Model): #TODO: Regions no longer exsist in rulesset
         "Returns infantry recruit total"
         hexes = self.hex_set.all()
         return round(hexes.aggregate(Sum('settlement_score'))['settlement_score__sum'],-2)
-    
+
 class Hex(models.Model):
     list_display = ("region", "x", "y", "settlement_score")
     x = models.IntegerField(default=0)
     y = models.IntegerField(default=0)
-    ##Type of landscape
     type = models.IntegerField(default=0)
 
+    map = models.ForeignKey(Map, on_delete=models.PROTECT, blank=True, null=True, related_name="hexes")
     region = models.ForeignKey(Region, on_delete=models.PROTECT, blank=True, null=True) #TODO: Should be change to stronghold
     settlement_score = models.IntegerField(default=20) #TODO: create algorithm to calculate this automatically
     ## All roads start in the middle 1 top and than clockwise
@@ -99,7 +119,11 @@ class Hex(models.Model):
     last_foraged = models.DateTimeField("last foraging")
     foraged_amount_season = models.IntegerField(default=0) #Should reset every season TODO: Add season trigger
     def __str__(self):
-        return f'{self.x}, {self.y}'
+        return f'[{self.region.name}] {self.x:02}:{self.y:02}: {self.get_type_name}({self.type})'
+
+    @property
+    def get_type_name(self):
+        return hextype_to_name(self)
 
     @property
     def get_neighbours(self):
@@ -121,6 +145,10 @@ class Hex(models.Model):
     #is the target hex A uncrossable terrain type? the score -100
     #return dict with scores
         return round(hexes.aggregate(Sum('settlement_score'))['settlement_score__sum'],-2)
+
+    @property
+    def is_fort(self):
+        return is_fort(self)
 
 class Player(models.Model):
     name = models.CharField(max_length=200, default=faker.name)
