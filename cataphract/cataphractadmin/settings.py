@@ -30,8 +30,7 @@ SECRET_KEY = 'django-insecure-kt&lh2=pn)mf)0%i+4hm1f2lui&idvqytsx^ze3gp!8^=b+__j
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
@@ -83,19 +82,23 @@ WSGI_APPLICATION = 'cataphractadmin.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        "NAME": os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'), 
-        'HOST': os.getenv('DB_HOST'), 
-        "PORT": os.getenv('DB_PORT'),
+        "NAME": 'cataphract', # os.getenv('DB_NAME'),
+        'USER': 'cataphract', # os.getenv('DB_USER'),
+        'PASSWORD': 'swordfish', # os.getenv('DB_PASSWORD'), 
+        'HOST': 'localhost', # os.getenv('DB_HOST'), 
+        "PORT": 5432, # os.getenv('DB_PORT'),
     }
 }
 
 STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
 
 # Password validation
@@ -147,8 +150,12 @@ USE_TZ = True
 STATIC_ROOT = BASE_DIR / 'static'
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
-    BASE_DIR / 'static/img'
+    BASE_DIR / 'static/img',
+    BASE_DIR / 'static/maps',
 ]
+
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
