@@ -2,6 +2,7 @@
 import random
 from .models import *
 from django.db.models import Q
+from .helpers import calc_distance_hexes
 from faker import Faker
 import heapq
 faker = Faker('en_GB')
@@ -224,12 +225,6 @@ def caculateRecruitment(faction, region, createArmy = False):
     return sheet
 
 
-def hex_distance(start, destination):
-    """Hex distance for axial coordinates."""
-    return int((abs(start.x - destination.x) 
-               + abs(start.x + destination.y - destination.y - destination.x) 
-               + abs(start.y - start.x)) / 2)
-
 
 def biased_astar(start, goal, bias = 1.2):
     """
@@ -241,7 +236,7 @@ def biased_astar(start, goal, bias = 1.2):
     
     came_from = {}
     g_score = {start: 0}
-    f_score = {start: hex_distance(start, goal) * bias}
+    f_score = {start: calc_distance_hexes(start, goal) * bias}
     
     while open_set:
         _, current = heapq.heappop(open_set)
@@ -261,7 +256,7 @@ def biased_astar(start, goal, bias = 1.2):
             if tentative_g < g_score.get(neighbor, float('inf')):
                 came_from[neighbor] = current
                 g_score[neighbor] = tentative_g
-                f_score[neighbor] = tentative_g + hex_distance(neighbor, goal) * bias
+                f_score[neighbor] = tentative_g + calc_distance_hexes(neighbor, goal) * bias
                 heapq.heappush(open_set, (f_score[neighbor], neighbor))
     
     return None  # no path found

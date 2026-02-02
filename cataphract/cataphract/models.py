@@ -163,7 +163,7 @@ class Player(models.Model):
 class Commander(models.Model): #Need to add perks and feats! How will we program those in?
     list_display = ("name", "faction")
     name = models.CharField(max_length=200, default=faker.name)
-    player_id = models.ForeignKey(Player, on_delete=models.PROTECT, blank=True, null=True) #TODO: would this be better to make this relation the other way around?
+    player_id = models.ForeignKey(Player, on_delete=models.PROTECT, blank=True, null=True)
     age = models.IntegerField(default=18) #This should probably be a DateField
     bio = models.TextField()
     # portrait = models.ImageField(upload_to='portraits/', blank=True, null=True) #TODO: does this allow to look at already uploaded files
@@ -249,13 +249,13 @@ class Commander(models.Model): #Need to add perks and feats! How will we program
 
 class Item(Modifier):
     name = models.CharField(max_length=200, default=faker.first_name)
-    desc = models.TextField() #Description of item, also include any roleplaying qualities of the item (owner of this sword is seen as the king of XY, etc.)
+    desc = models.TextField(help_text= "Description of item, also include any roleplaying qualities of the item (owner of this sword is seen as the king of XY, etc.)")
     owner = models.ForeignKey(Commander, on_delete=models.PROTECT, blank=True, null=True) #What happens if Commander dies?
 
 class Trait(Modifier): 
     name = models.CharField(max_length=200, default=faker.first_name)
-    desc = models.TextField() #Description of item, also include any roleplaying qualities of the item (owner of this sword is seen as the king of XY, etc.)
-    owners = models.ManyToManyField(Commander, blank=True, null=True) #TODO: Is this the right way of doing this?
+    desc = models.TextField(help_text= "Description of trait, also include any roleplaying qualities of the trait (This person is always loud, etc.)") 
+    owners = models.ManyToManyField(Commander, blank=True) 
     def __str__(self):
         return self.name
 
@@ -270,13 +270,13 @@ class Strongholds(models.Model): #Could this be a sub child of landmark?
     list_display = ("name", "faction","region")
     name = models.CharField(max_length=200, default=faker.city)
     bio = models.TextField()
-    stronghold_type = models.ForeignKey(Strongholdtype, on_delete=models.PROTECT, blank=True, null=True)
+    stronghold_type = models.ForeignKey(Strongholdtype, on_delete=models.PROTECT)
     faction = models.ForeignKey(Faction, on_delete=models.PROTECT, blank=True)
     location = models.ForeignKey(Hex, on_delete=models.PROTECT, blank=True)
     region = models.ForeignKey(Region, on_delete=models.PROTECT, blank=True, null=True)
     gate = models.BooleanField(default=True)
     sieged = models.BooleanField(default=False)
-    loot = models.IntegerField(default=0) #Default is based on type some sort on save field.
+    loot = models.IntegerField(default=0) #TODO: Default is based on type some sort on save field.
     #Can we generate a city garrison when creating a city?
     def __str__(self):
         return self.name
@@ -402,7 +402,7 @@ class Detachment(models.Model):
         return round(self.supplies_per_day/self.supplies, 2)
 
 class playerMessage(models.Model):
-    sending_commander = models.ForeignKey(Commander, on_delete=models.PROTECT, related_name='sending_commander')
+    sending_commander = models.ForeignKey(Commander, blank=True, null=True, on_delete=models.PROTECT, related_name='sending_commander')
     recieving_commander = models.ForeignKey(Commander, on_delete=models.PROTECT, related_name='recieving_commander')
     contents = models.TextField(help_text = "Message content")
     sent = models.DateTimeField("start of order")
@@ -457,3 +457,4 @@ class Order(models.Model):
 
     def __str__(self):
         return f'{self.commender}: {self.order_types} DATE START DATE END'
+    

@@ -6,8 +6,9 @@ from .serializers import CommanderSerializer
 from django.db.models import Q
 from .models import *
 from .armies import *
-from .orders import *
+from .orders import order_tick
 from .mapimage import *
+from .helpers import *
 import random, math
 from datetime import datetime, timedelta
 
@@ -25,10 +26,19 @@ class CommanderViewSet(viewsets.ModelViewSet):
 
 
 class CommanderMap(APIView):
+     
+    """
+    Sends back the currect Commandeer back.
+
+    * Requires token authentication.
+    * Only admin users are able to access this view.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request, discordid, format=None):
-        player = Player.objects.get(discord_id=discordid)
+        player = Player.objects.get(discord_id=discordid) #TODO: make sure the Discordbots already gets the Commander instead 
         commander = player.commander_set.first()
-        army = commander.army_set.first() #TODO: Make this capable of not picking the wrong army if player has more armies (which shouldn't be a thing, but it probably will happen)
+        army = commander.army_set.first() #TODO: Make this capable of not picking the wrong army if a commander has more armies (which shouldn't be a thing, but it probably will happen)
         #TODO turn this into an image
         response = moraleCheck(commander, army)
 
@@ -75,63 +85,22 @@ class Tick(APIView):
         world.last_tick = now
         world.save()
         
-        #Set all armies to unharried
-
-        #Check and apply all harried commands (is a harried command still given?)
-        Army.all().update(harried=False)
         
-        for order in Order.filter(order__gte=7, order__lte=9, date_end__gte=now, completed=False):
-            
-# A detachment may harry an army within scouting range. 
+        #Updates the status of all the ongoing orders.
+        order_tick()
 
-            source_army = order.commander.army_set.first()
-            target_army = order.target_army_set.first()
-            #Check if army is within distance
-            
-            source_army_loc = (source_army.location.x,source_army.location.y)
-            target_army_loc = (target_army.location.x,target_army.location.y)
-            
-            if order.selected_detachment.scout_distance >= math.dist(source_army_loc, target_army_loc):
-                order.commander.target_army_set.first().update(harried=True)
-                order_harried(order)
-            else:
-                pass
-            
+        response = {}
 
-            
-            #
+        #Add all mapimage URL's and army sheets
+        response['armies'] = []
+        for army in Army.all():
+            armystatus = {}
+            armystatus['imageurl'] = "placeholder.jpg"
+            response['armies'].append(armystatus)
         
-        Army.all().save()
+        #Add all commander that reside on the same space
+        response['channelsopen'] = []
 
-        #Get all other orders 
-        #Move orders
-        # for order in Order.filter(order=1, date_end__gte= now, completed=False):
-            # self.move(order)
-
-        for order in Order.filter(order=2, date_end__gte = now, completed=False):
-            self.rest(order)
-        
-        #Building check (we assume that siege)
-        for order in Order.filter(order=3, date_end__gte = now, completed=False):
-            self.build(order)
-        
-        for order in Order.filter(order=5, date_end__gte = now, completed=False):
-            self.forage(order)
-
-        for order in Order.filter(order=6, date_end__gte = now, completed=False):
-            self.siege(order)
-        
-        for order in Order.filter(order=10, date_end__gte =now, completed=False):
-            self.operations(order)
-
-        #Time threshold order (only check when weeks is completed)
-        #Rest, Seige
-
-        #Fully complete orders (only check completed orders)
-        #Recruit, 
-        
-        #If move order
-        response = {'done':True}
 
         ##Construct a giant response object that the bot uses to keep user up to date about what's happening,
         #Recieve their maps image
@@ -140,45 +109,7 @@ class Tick(APIView):
         # also, open up channels with player that are on the same hex 
         return Response(response)
     
-    def move():
-        #is Army same location as other army that is from different faction? Notify referee to see if they are letting each other pass, make the ref move them manually
-        #Is end location reached? No, let's travel further
-        #Is end location is reached, delete order. Notify Referee and Commander, order is complete
-        return True
-    
-    def build():
-        #If end time is reached, add Siege engines
-        #Otherwise just pass
-        return True
-
-    def forage():
-        
-        #Takes a full day
-        #if completed
-
-        return True
-    
-    def rest(order):
-        #If new week is reached add 1 morale to army (or eeach )
-        #If rest time is completed
-        return True
-    
-    def siege(order):
-        #If new week is reached reduce 1 morale to sieged city
-        return True
-    
-    def h_kill(order):
-        return True
-
-    def h_torch(order):
-        return True
-    
-    def h_loot(order):
-        return True
-    
-    def operations(order):
-        return True
-    
+ 
 class Commandersheet(APIView):
     """
     Creates an army overview, format based on the example army shown in the rules.
@@ -246,3 +177,45 @@ class CalculateRecruit(APIView):
         result = caculateRecruitment(commander.faction, region, False)
         print(result)
         return Response(result) 
+    
+class SendMessage(APIView):
+    """
+    Sends a message to another player
+    
+    * Requires token authentication.
+    """
+    # authentication_classes = [authentication.TokenAuthentication] #This might be something cool to look into
+    
+    def post(self, request, format=None):
+        # transfer_data = request.data
+        # #Is this a legal transfer, as in are both commanders in the same hex?
+        # transfer_data.recieving_commander
+        message = playerMessage()
+        return True
+        
+
+
+
+class TransferSupplies(APIView):
+    def post(self, request, format=None):
+        #Is this a legal transfer, as in are both commanders in the same hex?
+        #TODO: How to 
+        return True
+
+class TransferWagons(APIView):
+    def post(self, request, format=None):
+        #Is this a legal transfer, as in are both commanders in the same hex?
+        return True
+
+class  TransferDetachments(APIView):
+    def post(self, request, format=None):
+        
+        # transfer_data = request.data
+        # #Is this a legal transfer, as in are both commanders in the same hex?
+        # transfer_data.recieving_commander
+        # new_army = Commander.filter(__name__=transfer_data.recieving_commander)
+        # detachment.army = new_army
+        # detachment.save()
+        
+        return True
+    
