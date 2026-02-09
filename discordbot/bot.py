@@ -2,22 +2,85 @@ import os
 from dotenv import load_dotenv, dotenv_values 
 import discord
 from discord.ext import tasks
+from discord import app_commands
+from discord.ext import commands 
 import io
 import requests
 load_dotenv() 
 import time
 
+#TODO: Kunnen we Select Menu https://support-dev.discord.com/hc/en-us/articles/6382655804311-Select-Menus-FAQ
+# https://discordpy-reborn.readthedocs.io/en/latest/api.html?highlight=select%20menu#discord.ui.Select
+
 django_url = os.getenv('DJANGO_URL')
 django_port = os.getenv('DJANGO_PORT')
+
+
+#TODO: make the list of option contextual, so no transferring detachments or wagons between commanders if not on the same space etc.
+class OrderSelect(discord.ui.Select):
+    def __init__(self):
+        options=[
+            #KEEP DESCRIPTION UNDER 100 CHARACTERS!
+            discord.SelectOption(label="Move",emoji="➡",description="Moves army towards location"),
+            discord.SelectOption(label="Forage",emoji="🥪",description="Gather supplies, takes a day"),
+            discord.SelectOption(label="Rest",emoji="💤",description="Rest for the said amount of time."),
+            discord.SelectOption(label="Operations",emoji="❕",description="A referee will discuss the operation with you and decide how to proceed.")
+            ]
+        super().__init__(placeholder="Select an option",max_values=1,min_values=1,options=options)
+    
+    async def callback(self, interaction: discord.Interaction):
+        action = self.values[0]
+
+        # disable the select so it can't be used again
+        self.disabled = True
+        
+        print(action)
+        if action == "Move":
+            await interaction.response.send_modal(DestinationModal())
+        else:
+            await interaction.response.edit_message(view=self.view)
+        
+
+class DestinationModal(discord.ui.Modal, title=f"Set Destination"):
+    amount = discord.ui.TextInput(label="Destination", placeholder="hex location (1,2) or known stronghold (Spencerport)")
+
+    async def on_submit(self_inner, modal_interaction: discord.Interaction):
+        destination = self_inner.amount.value.strip()
+        # basic validation: numeric
+        if destination != "Spencerport":
+                await modal_interaction.response.send_message("Command not given: Location unknown.", ephemeral=True)
+                return
+
+        # handle deposit/withdraw logic here (placeholder)
+        await modal_interaction.response.send_message(
+            f"You chose a **Move action** with amount **{destination}**.", ephemeral=True
+        )
+
+
+
+
+class OrderView(discord.ui.View):
+    def __init__(self, *, timeout: float = 60.0):
+        super().__init__(timeout=timeout)
+        self.add_item(OrderSelect())
+
+    async def on_timeout(self):
+        # disable all items on timeout
+        self.disable_all_items()
+        if hasattr(self, "message") and self.message:
+            try:
+                await self.message.edit(view=self)
+            except Exception:
+                pass
 
 def format_army_sheet(json):
     message = ""
     #TODO empty labels are stil printend
     if "commander" in json.keys():
         message += f'**Commander: {json["commander"]} (age: {json["age"]})** \n'
-        if json["traits"] is not "":
+        if json["traits"] != "":
             message += f'*Traits: {json["traits"]}* \n'
-        if json["relation"] is not "":
+        if json["relation"] != "":
             message += f'*{json["relation"]}* \n'
     message += f'{json["army_overview"]} \n' 
     message += '\n'
@@ -57,6 +120,11 @@ def format_army_sheet(json):
 
 
 class CataphractBot(discord.Client):
+    def __init__(self):
+        intents = discord.Intents(messages=True, guilds=True, message_content = True, members = True)
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+    
     async def on_ready(self):
         print('Logged on as', self.user)
 
@@ -130,6 +198,7 @@ class CataphractBot(discord.Client):
 
     #https://github.com/Rapptz/discord.py/blob/master/examples/background_task.py < Recurring tasks, this will be our main cron loop
     async def setup_hook(self) -> None:
+        await self.tree.sync(guild=discord.Object(id=1024261189502500895))
         self.update_world.start()
 
     # The idea right now is to have a tick last four hours 
@@ -205,9 +274,20 @@ class CataphractBot(discord.Client):
 
 
 
+#TODO: This is cool, but can we limit the working of this order to the specific private thread (or DM)
+
+
+
 if __name__ == '__main__':
-    intents = discord.Intents(messages=True, guilds=True, message_content = True, members = True)
-    client = CataphractBot(intents=intents)
+    
+    client = CataphractBot()
+    
+    @client.tree.command(name="order", description="Open order flow")    
+    async def order(interaction: discord.Interaction):
+        view = OrderView(timeout=60.0)
+        # send the message and keep reference to it so view can edit later
+        await interaction.response.send_message("Give an order to your army:", view=view, ephemeral=True)
+        view.message = await interaction.original_response()
     
     client.run(os.getenv('DISCORD_TOKEN'))
 
