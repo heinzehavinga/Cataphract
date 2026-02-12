@@ -1,6 +1,6 @@
 hextypes = {
     0: "grassland",
-    1: "forst",
+    1: "forest",
     2: "woodlands",
     3: "hills",
     4: "hillforest",

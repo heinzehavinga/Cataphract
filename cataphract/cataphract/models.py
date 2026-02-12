@@ -103,18 +103,19 @@ class Region(models.Model): #TODO: Regions no longer exsist in rulesset
         return round(hexes.aggregate(Sum('settlement_score'))['settlement_score__sum'],-2)
 
 class Hex(models.Model):
-    list_display = ("region", "x", "y", "settlement_score")
+    list_display = ("region", "x", "y", "type", "settlement_score", "tile_thumbnail")
     x = models.IntegerField(default=0)
     y = models.IntegerField(default=0)
     type = models.IntegerField(default=0)
+    tile = models.CharField(max_length=200, blank=True, null=True)
 
     map = models.ForeignKey(Map, on_delete=models.PROTECT, blank=True, null=True, related_name="hexes")
     region = models.ForeignKey(Region, on_delete=models.PROTECT, blank=True, null=True) #TODO: Should be change to stronghold
     settlement_score = models.IntegerField(default=20) #TODO: create algorithm to calculate this automatically
-    ## All roads start in the middle 1 top and than clockwise
+    ## All roads start in the middle 1 top and then clockwise
     road = models.BooleanField(default=True)
     
-    #Based on ribs 1 is the top rib and then clockwise.
+    #Based on edge 1 is the top edge and then clockwise.
     river = models.IntegerField(default=0) #probably a 123456, with every side being a number so a river of 234 has river on sides 2 and 3 and 4
     last_foraged = models.DateTimeField("last foraging")
     foraged_amount_season = models.IntegerField(default=0) #Should reset every season TODO: Add season trigger

@@ -1,11 +1,28 @@
-from django.core.management.base import BaseCommand, CommandError
+from django.conf import settings
+from django.core.management.base import BaseCommand
 from cataphract.models import World, Map, Region, Hex, Faction
 import json
 from django.utils import timezone
-
-
 import random
-from collections import defaultdict
+from pathlib import Path
+from cataphract.utils import hextypes
+
+def get_tileset_filenames(tileset_name="wesnoth"):
+    tileset = {}
+    tileset_path = Path(settings.MEDIA_ROOT)/'tilesets'/tileset_name
+
+    for key, name in hextypes.items():
+        try:
+            print(key, name)
+            files = list(tileset_path.glob(f'{name}*.png'))
+            for a in files:
+                print("  ", a.name)
+            tileset[key] = [f"tilesets/{tileset_name}/{p.name}" for p in files]
+        except Exception as e:
+            tileset[key] = []
+            print("  ", name, "missing")
+            print(e)
+    return tileset
 
 def hex_distance(a, b):
     return (abs(a.x - b.x) + abs(a.y - b.y)) / 2
@@ -32,10 +49,12 @@ def find_closest_fort(hexes, forts):
 class Command(BaseCommand):
     help = "Import a hexmap JSON map to a world"
 
+
     def add_arguments(self, parser):
         parser.add_argument("mappath", nargs="+", type=str)
 
     def handle(self, *args, **options):
+        tileset = get_tileset_filenames()
         map_path = options["mappath"][0]
         print("Importing map:", map_path)
         with open(map_path, 'r') as f:
@@ -59,12 +78,17 @@ class Command(BaseCommand):
                 r = 0
             else:
                 r = int(r)
+            img_path = ""
+            hex_type = int(tile['type'])
+            if hex_type in tileset.keys() and tileset[hex_type]:
+                img_path = random.choice(tileset[hex_type])
             h = Hex(
                 map=map, x=tile['x'], y=tile['y'],
-                type=int(tile['type']),
+                type=hex_type,
                 road=bool(tile.get('roads', False)),
                 river=r,
-                last_foraged=timezone.now()
+                last_foraged=timezone.now(),
+                tile=img_path,
             )
             hexes.append(h)
         Hex.objects.bulk_create(hexes)

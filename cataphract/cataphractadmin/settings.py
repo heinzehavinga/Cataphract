@@ -151,7 +151,6 @@ STATIC_ROOT = BASE_DIR / 'static'
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static/img',
-    BASE_DIR / 'static/maps',
 ]
 
 MEDIA_URL = 'media/'
