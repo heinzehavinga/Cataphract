@@ -1,3 +1,9 @@
+from pathlib import Path
+import re
+
+from django.conf import settings
+
+
 hextypes = {
     0: "grassland",
     1: "forest",
@@ -56,3 +62,20 @@ def hextype_to_name(Hex):
         raise ValueError(f"Unknown hex type: {Hex.type} for hex {Hex.x}, {Hex.y}: {Hex.type}")
 
     return r
+
+def glob_re(pattern, path):
+    all_files = [x.name for x in path.iterdir()]
+    return list(filter(re.compile(pattern).match, all_files))
+
+def get_tileset(tileset_name="wesnoth"):
+    tileset = {}
+    tileset_path = Path(settings.MEDIA_ROOT)/'tilesets'/tileset_name
+
+    for key, name in hextypes.items():
+        tileset[key] = []
+        try:
+            for p in glob_re(rf"{re.escape(name)}\d*\.png", tileset_path):
+                tileset[key].append(f"tilesets/{tileset_name}/{p}")
+        except Exception as e:
+            pass
+    return tileset

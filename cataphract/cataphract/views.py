@@ -1,17 +1,56 @@
+import json
+
 from rest_framework.views import APIView
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.views.generic import TemplateView
 from rest_framework import permissions, viewsets
 from rest_framework.response import Response
 from .serializers import CommanderSerializer
 from django.db.models import Q
 from .models import *
+from cataphract.models import Commander, Map
 from .armies import *
-from .mapimage import *
+# from .mapimage import *
+import cataphract.utils as utils
 import random, math
 from datetime import datetime, timedelta
 
 def index(request):
     return HttpResponse("Hello, world. You're at the cataphract index.")
+
+class MapView(TemplateView):
+    template_name = "map.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        mapid = int(self.kwargs.get('mapid'))
+        map = Map.objects.get(id=mapid)
+        context['mapid'] = mapid
+        context['mapSrc'] = map.image
+        context['name'] = map.name
+        context['hexes'] = map.hexes.order_by('y', 'x').all()
+        context['pallet'] = utils.get_tileset()
+        return context
+
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            h = Hex.objects.get(id=data['hex_id'])
+            h.type = int(data['type'])
+            tile = data.get('tile', "random")
+            if tile == "random":
+                tileset = utils.get_tileset()
+                h.tile = random.sample(tileset[h.type], 1)[0]
+            print("update map", map, "hex", h, "to", tile)
+            h.save()
+            h.map.render()
+
+            return JsonResponse({"status": "success", "data": {'new_src': f"{h.map.image}"}})
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+
+    # def get(self, request, mapid):
+        
 
 
 class CommanderViewSet(viewsets.ModelViewSet):

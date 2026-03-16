@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.urls import path, include
 from . import views
 from rest_framework import routers
@@ -8,6 +10,7 @@ router.register(r'commanders', views.CommanderViewSet)
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("map/<int:mapid>", views.MapView.as_view()),
     path("calculaterecruit/<int:discordid>", views.CalculateRecruit.as_view()),
     path("commandersheet/<int:discordid>", views.Commandersheet.as_view()),
     path("moralecheck/<int:discordid>", views.MoraleCheck.as_view()), #TODO: Referee should only be able to make this call about an army
@@ -15,3 +18,6 @@ urlpatterns = [
     path("api/", include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework'))
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

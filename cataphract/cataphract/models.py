@@ -1,9 +1,15 @@
+from io import BytesIO
+from pathlib import Path
+import random
+from django.conf import settings
+from django.core.files import File
 from django.db import models
 from faker import Faker
 from django.db.models import Sum, Q, Max, Avg
 import math
 from datetime import datetime
 from django.utils import timezone
+from django.core.files.storage import default_storage
 
 
 from .utils import hextype_to_name, is_fort
@@ -77,11 +83,18 @@ class Map(models.Model):
     world = models.ForeignKey(World, on_delete=models.PROTECT, blank=False, null=False)
     image = models.ImageField(upload_to='maps/', blank=True, null=True)
 
-    # def image_tag(self):
-    #     from django.utils.html import escape
-    #     return u'<img src="%s" />' % escape(<URL to the image>)
-    # image_tag.short_description = 'Image'
-    # image_tag.allow_tags = True
+    def render(self):
+        from cataphract.mapimage import render_map
+        old_file = self.image.name
+        target = render_map(self)
+        img_io = BytesIO()
+        target.save(img_io, format='JPEG', quality=90)
+        img_io.seek(0)
+        django_file = File(img_io, name=f"{self.name}.jpg")
+        self.image.save(f"{self.name}.jpg", django_file, save=True)
+        print("done. re-rendered and saved map:", self.image)
+        print(default_storage)
+        default_storage.delete(old_file)
 
     def __str__(self):
         return self.name
@@ -150,6 +163,21 @@ class Hex(models.Model):
     @property
     def is_fort(self):
         return is_fort(self)
+    
+    def update_tile(self, tileset_name="wesnoth"):
+        tileset_path = Path(settings.MEDIA_ROOT)/'tilesets'/tileset_name
+        tile_name = hextype_to_name(self)
+        files = list(tileset_path.glob(f'{tile_name}*.png'))
+        return f"tilesets/{tileset_name}/{random.choice(files).name}"
+
+    def save(self, *args, **kwargs):
+        if self.pk:  # Only on update, not on creation
+            original = Hex.objects.get(pk=self.pk)
+            if original.type != self.type:
+                self.tile = self.update_tile()
+        else:  # On creation
+            pass
+        super().save(*args, **kwargs)
 
 class Player(models.Model):
     name = models.CharField(max_length=200, default=faker.name)

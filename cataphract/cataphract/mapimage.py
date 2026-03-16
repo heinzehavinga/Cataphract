@@ -17,29 +17,23 @@ def get_tileset(tileset_name="wesnoth"):
 
     for key, name in hextypes.items():
         try:
-            print(key, name)
+            # print(key, name)
             files = list(tileset_path.glob(f'{name}*.png'))
             for p in files:
                 tileset[f"tilesets/{tileset_name}/{p.name}"] = Image.open(p).convert("RGBA")
-                print("  ", p.name)
+                # print("  ", p.name)
         except Exception as e:
-            print("  ", name, "missing")
-            print(e)
+            # print("  ", name, "missing")
+            # print(e)
+            pass
     return tileset
 
-def make_map(mapid: Map, commander:Commander = None) -> None:
-    map = Map.objects.get(id=mapid)
+def render_map(map: Map) -> Image:
     size = 72
-    
-    if commander:
-        print("generating map of:,", map, ",for Commander:", commander)
-    else:
-        print("generating map of:", map)
-
     tileset = get_tileset()
 
     # Make bitmap at correct size
-    target = Image.new("RGBA", (math.ceil(map.width*(size*.75)+size*.25), math.ceil((map.height+.5)*size)), (255, 255, 255, 255))
+    target = Image.new("RGB", (math.ceil(map.width*(size*.75)+size*.25), math.ceil((map.height+.5)*size)), (255, 255, 255))
     for hex in map.hexes.all():
         x = hex.x * (size*.75)
         y = hex.y * size
@@ -50,7 +44,17 @@ def make_map(mapid: Map, commander:Commander = None) -> None:
             y -= math.floor((img.size[1] - size)/2)
             x -= math.floor((img.size[0] - size)/2)
             target.paste(img, (math.ceil(x), math.ceil(y)), img)
-        print(hex)
+    return target
+
+def make_map(mapid: Map, commander:Commander = None) -> None:
+    map = Map.objects.get(id=mapid)
+    
+    if commander:
+        print("generating map of:,", map, ",for Commander:", commander)
+    else:
+        print("generating map of:", map)
+
+    target = render_map(map)
 
     print("saving to:", f"{settings.MEDIA_ROOT}/maps/{map.name}.png")
     target.save(f"{settings.MEDIA_ROOT}/maps/{map.name}.png")

@@ -1,0 +1,36 @@
+{% load static %}
+{% load hex_filters %}
+
+<html>
+    <head>
+        <link rel="stylesheet" href="{% static 'map.css' %}">
+        <script src="{% static 'map.js' %}" type="text/javascript" defer></script>
+    </head>
+    <body class="map">
+        <h1>{{ mapid }}</h1>
+        <main>
+            <section id="map-section">
+                <img src="/media/{{ mapSrc }}" usemap="#map" id="map-image">
+                <map name="map" id="map">
+                    {% for hex in hexes %}
+                    <area shape="poly" coords="{{ hex|coords }}" alt="!!" href="" id="{{ hex.id }}"data-x="{{ hex.x }}" data-y="{{ hex.y }}">
+                    {% endfor %}
+                </map>
+                <div id="cursor"></div>
+            </section>
+             <section id="pallet-section">
+                {% for type, files in pallet.items %}
+                <div class="tile-container">
+                    <img class="tile random" data-type="{{type}}" data-tile="random" src="/media/{{files.0}}"></img>
+                    <details class="tile-list">
+                        <summary></summary>
+                        {% for src in files %}
+                            <img class="tile" data-type="{{type}}" data-tole="{{src}}" src="/media/{{src}}"></img>
+                        {% endfor %}
+                    </details>
+                </div>
+                {% endfor %}
+            </section>
+        </main>
+    </body>
+</html>

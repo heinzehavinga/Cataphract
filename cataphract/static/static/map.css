@@ -1,0 +1,91 @@
+html {
+    height: 100vh;
+    width: 100vw;
+    box-sizing: border-box;
+    border: solid 4px red;
+}
+body.map {
+    border: solid 1px purple;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    h1 {
+        padding: 0;
+        margin: 0;
+    }
+    main {
+        flex: 1;
+        border: solid 1px blue;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: row;
+        overflow: hidden;
+    }
+    
+    #pallet-section {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none;
+        
+        img.tile {
+            pointer-events: all;
+            cursor: pointer;
+        }
+        img.tile:hover {
+            filter: brightness(2);
+        }
+        img.tile.selected {
+            filter: brightness(1.5);
+        }
+        .tile-container {
+            position: relative;
+            height: 72px;
+            width: fit-content;
+            display: flex;
+            flex-direction: row;
+            gap: 10px;            
+        }
+
+        .tile-list {
+            position: relative;
+            /* left: 180px; */
+            z-index: 10;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+            min-height: 72px;
+            pointer-events: all;
+        }
+        summary {
+            cursor: pointer;
+        }
+    }
+    #map-section {
+        margin-left: 100px;
+        overflow: auto;
+        position: relative;
+    }
+    #cursor {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 72px;
+        width: 72px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0) 50%, rgba(200, 200, 200, 1) 75%);
+        clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+        pointer-events: none;
+    }
+}

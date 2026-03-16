@@ -32,6 +32,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://dev.malygos.net",
+    "http://dev.malygos.net:8000",
+]
+
 # Application definition
 
 INSTALLED_APPS = [ #TODO: Do we need all this?
@@ -150,7 +155,7 @@ USE_TZ = True
 STATIC_ROOT = BASE_DIR / 'static'
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [
-    BASE_DIR / 'static/img',
+    BASE_DIR / 'static/static',
 ]
 
 MEDIA_URL = 'media/'
