@@ -1,13 +1,15 @@
 import os
 from dotenv import load_dotenv, dotenv_values 
 import discord
+import io
+import requests
+import time
 from discord.ext import tasks
 from discord import app_commands
 from discord.ext import commands 
-import io
-import requests
+from classes.orders import *
+from classes.sheets import *
 load_dotenv() 
-import time
 
 #TODO: Kunnen we Select Menu https://support-dev.discord.com/hc/en-us/articles/6382655804311-Select-Menus-FAQ
 # https://discordpy-reborn.readthedocs.io/en/latest/api.html?highlight=select%20menu#discord.ui.Select
@@ -15,109 +17,9 @@ import time
 django_url = os.getenv('DJANGO_URL')
 django_port = os.getenv('DJANGO_PORT')
 
-
-#TODO: make the list of option contextual, so no transferring detachments or wagons between commanders if not on the same space etc.
-class OrderSelect(discord.ui.Select):
-    def __init__(self):
-        options=[
-            #KEEP DESCRIPTION UNDER 100 CHARACTERS!
-            discord.SelectOption(label="Move",emoji="➡",description="Moves army towards location"),
-            discord.SelectOption(label="Forage",emoji="🥪",description="Gather supplies, takes a day"),
-            discord.SelectOption(label="Rest",emoji="💤",description="Rest for the said amount of time."),
-            discord.SelectOption(label="Operations",emoji="❕",description="A referee will discuss the operation with you and decide how to proceed.")
-            ]
-        super().__init__(placeholder="Select an option",max_values=1,min_values=1,options=options)
-    
-    async def callback(self, interaction: discord.Interaction):
-        action = self.values[0]
-
-        # disable the select so it can't be used again
-        self.disabled = True
-        
-        print(action)
-        if action == "Move":
-            await interaction.response.send_modal(DestinationModal())
-        else:
-            await interaction.response.edit_message(view=self.view)
-        
-
-class DestinationModal(discord.ui.Modal, title=f"Set Destination"):
-    amount = discord.ui.TextInput(label="Destination", placeholder="hex location (1,2) or known stronghold (Spencerport)")
-
-    async def on_submit(self_inner, modal_interaction: discord.Interaction):
-        destination = self_inner.amount.value.strip()
-        # basic validation: numeric
-        if destination != "Spencerport":
-                await modal_interaction.response.send_message("Command not given: Location unknown.", ephemeral=True)
-                return
-
-        # handle deposit/withdraw logic here (placeholder)
-        await modal_interaction.response.send_message(
-            f"You chose a **Move action** with amount **{destination}**.", ephemeral=True
-        )
-
-
-
-
-class OrderView(discord.ui.View):
-    def __init__(self, *, timeout: float = 60.0):
-        super().__init__(timeout=timeout)
-        self.add_item(OrderSelect())
-
-    async def on_timeout(self):
-        # disable all items on timeout
-        self.disable_all_items()
-        if hasattr(self, "message") and self.message:
-            try:
-                await self.message.edit(view=self)
-            except Exception:
-                pass
-
-def format_army_sheet(json):
-    message = ""
-    #TODO empty labels are stil printend
-    if "commander" in json.keys():
-        message += f'**Commander: {json["commander"]} (age: {json["age"]})** \n'
-        if json["traits"] != "":
-            message += f'*Traits: {json["traits"]}* \n'
-        if json["relation"] != "":
-            message += f'*{json["relation"]}* \n'
-    message += f'{json["army_overview"]} \n' 
-    message += '\n'
-    message += f'Morale {int(json["morale"])} \n'
-    message += '\n'
-    message += f'Supplies {json["supplies"]}/{json["capacity"]}\n'
-    message += f'     Uses {json["supplies_per_day"]} supplies per day\n'
-    message += f'     {json["supplies_days_left"]} left before supplies run out.\n'
-    message += '\n'
-    message += f'Detachments:\n'
-    for detachment in json["detachments"]:
-        message += f'{detachment}\n'
-    
-    return message
-
-#TODO:
-# Add a Discord template, that can set up all the things (you can do this to an init function)
-# What sort of rights are minimally needed for bot (right now admin, which isn't needed)
-# During install write a little test script that check if all needed rights are present.
-
-#Create Roles
-    # A role for referee
-    # A role for player
-
-#Create game channel
-    #The Cataphracts channel
-
-
-#Testing, is private thread really private?
-
-# https://discordtemplates.me/
-#Is there such a thing as discord bot templates? Can we autogenerate the Ouath2 token from the bot?!?!
-    #Maybe run docker without token and it spits out the link to you, you add it to the server and it gives you a token you need.
-    #Or create a little github page that generates the correct Oath2 settings
-
-#We need a startup script that show you if you've set all your permissions correctly
-
+#TODO: make the list of options contextual, so no transferring detachments or wagons between commanders if not on the same space etc.
+#TODO: Rewrite system so that every Commanders gets a seperate thread (player can have more than one Commander, for testing purposes)
+        # - Commands can only be given in that specific thread
 
 class CataphractBot(discord.Client):
     def __init__(self):
@@ -128,7 +30,6 @@ class CataphractBot(discord.Client):
     async def on_ready(self):
         print('Logged on as', self.user)
 
-    #TODO: add a way that if order is given, bot repsonds with a order description and user confirms with a thumbs up emote.
     #TODO: I would like to be able have one order in the queue, so pleople can do "When I complete rest, move to X. Or when move to X is complete, Forage."
     async def on_message(self, message): #Little function to test if bot if working, just to make sure
         
@@ -141,7 +42,6 @@ class CataphractBot(discord.Client):
         if message.content == 'Bot, how goes the game?':
             await message.channel.send(f'The game hasn\'t started yet, {message.author.mention}')
         
-        #TODO: How would we undo a tick?
         if '/tick' in message.content.lower():
             await self.update_world()
             await message.channel.send('Setting game forward one tick')
