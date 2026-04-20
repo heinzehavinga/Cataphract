@@ -26,7 +26,7 @@ const coordToPos = (ox, oy) => {
     return [x, y]
 }
 
-var mapEl
+var mapEl, regionEl
 var mapUrl = ""
 const updateHex = async (id, type, tile) => {
     console.log("updateHex")
@@ -46,11 +46,13 @@ const updateHex = async (id, type, tile) => {
         console.log(">>>")
         console.log(json)
         mapEl.setAttribute("src", `/media/${json.data['new_src']}`)
+        regionEl.setAttribute("src", `/media/${json.data['new_region_src']}`)
     })
     .catch(error => console.error('Error:', error));
 }
 document.addEventListener("DOMContentLoaded", (_) => {
     mapEl = document.getElementById("map-image")
+    regionEl = document.getElementById("region-overlay")
     mapUrl = mapEl.getAttribute("src")
     const allTiles = document.querySelectorAll(".tile")
     const cursorEl = document.getElementById("cursor")

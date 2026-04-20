@@ -1,4 +1,5 @@
 from pathlib import Path
+import random
 import re
 
 from django.conf import settings
@@ -55,6 +56,9 @@ fort_types.extend(castle_types)
 
 def is_fort(hex):
     return hex.type in fort_types
+
+def hex_distance(a, b):
+    return (abs(a.x - b.x) + abs(a.y - b.y)) / 2
 
 def hextype_to_name(Hex):
     r = hextypes.get(Hex.type, None)

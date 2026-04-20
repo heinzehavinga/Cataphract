@@ -17,3 +17,7 @@ def coords(hex):
         f"{x+18},{y+size} "
         f"{x+0},{y+36}"
     )
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)

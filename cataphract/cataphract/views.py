@@ -26,14 +26,36 @@ class MapView(TemplateView):
         mapid = int(self.kwargs.get('mapid'))
         map = Map.objects.get(id=mapid)
         context['mapid'] = mapid
+        print("ctx", map.image)
         context['mapSrc'] = map.image
+        context['layerRegionSrc'] = map.region_image
         context['name'] = map.name
         context['hexes'] = map.hexes.order_by('y', 'x').all()
         context['pallet'] = utils.get_tileset()
+        context['palletMap'] = utils.hextypes
         return context
+
+    def get(self, request, *args, **kwargs):
+        print("GET!")
+        # mapid = int(self.kwargs.get('mapid'))
+        # map = Map.objects.get(id=mapid)
+        # map.render()
+        # map.render_layer_region()
+        return super().get(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
         try:
+            calc_layer = request.GET.get('calc', None)
+            print("calc_layer:", calc_layer)
+            if calc_layer:
+                mapid = int(self.kwargs.get('mapid'))
+                map = Map.objects.get(id=mapid)
+                # map.render()
+                map.calculate_regions()
+                map.render_layer_region()
+                return JsonResponse({"status": "success", "data": {'new_src': f"{map.image}", 'new_region_src': f"{map.region_image}"}})
+
+
             data = json.loads(request.body)
             h = Hex.objects.get(id=data['hex_id'])
             h.type = int(data['type'])
@@ -44,8 +66,9 @@ class MapView(TemplateView):
             print("update map", map, "hex", h, "to", tile)
             h.save()
             h.map.render()
+            h.map.render_layer_region()
 
-            return JsonResponse({"status": "success", "data": {'new_src': f"{h.map.image}"}})
+            return JsonResponse({"status": "success", "data": {'new_src': f"{h.map.image}", 'new_region_src': f"{h.map.region_image}"}})
         except json.JSONDecodeError:
             return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
 

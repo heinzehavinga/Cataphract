@@ -82,6 +82,7 @@ class Map(models.Model):
     width = models.IntegerField(default=0)
     world = models.ForeignKey(World, on_delete=models.PROTECT, blank=False, null=False)
     image = models.ImageField(upload_to='maps/', blank=True, null=True)
+    region_image = models.ImageField(upload_to='maps/', blank=True, null=True)
 
     def render(self):
         from cataphract.mapimage import render_map
@@ -95,6 +96,24 @@ class Map(models.Model):
         print("done. re-rendered and saved map:", self.image)
         print(default_storage)
         default_storage.delete(old_file)
+    
+    def render_layer_region(self):
+        from cataphract.mapimage import render_region_layer
+        old_file = self.region_image.name
+        target = render_region_layer(self)
+        img_io = BytesIO()
+        target.save(img_io, format='JPEG', quality=90)
+        img_io.seek(0)
+        django_file = File(img_io, name=f"{self.name}_layer_region.jpg")
+        self.region_image.save(f"{self.name}_layer_region.jpg", django_file, save=True)
+        print("done. re-rendered and saved map:", self.region_image)
+        print(default_storage)
+        if old_file:
+            default_storage.delete(old_file)
+
+    def calculate_regions(self):
+        from cataphract.mapimage import calculate_regions
+        calculate_regions(self)
 
     def __str__(self):
         return self.name

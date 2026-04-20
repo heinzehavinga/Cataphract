@@ -7,7 +7,13 @@
         <script src="{% static 'map.js' %}" type="text/javascript" defer></script>
     </head>
     <body class="map">
-        <h1>{{ mapid }}</h1>
+        <header>
+            <h1>{{ mapid }}</h1>
+            <form action="/cataphract/map/1?calc=regions" method="POST">
+                {% csrf_token %}
+                <input type="submit" value="Calculate Regions">
+            </form>
+        </header>
         <main>
             <section id="map-section">
                 <img src="/media/{{ mapSrc }}" usemap="#map" id="map-image">
@@ -16,12 +22,13 @@
                     <area shape="poly" coords="{{ hex|coords }}" alt="!!" href="" id="{{ hex.id }}"data-x="{{ hex.x }}" data-y="{{ hex.y }}">
                     {% endfor %}
                 </map>
+                <img src="/media/{{ layerRegionSrc }}" class="map-overlay" id="region-overlay">
                 <div id="cursor"></div>
             </section>
              <section id="pallet-section">
                 {% for type, files in pallet.items %}
                 <div class="tile-container">
-                    <img class="tile random" data-type="{{type}}" data-tile="random" src="/media/{{files.0}}"></img>
+                    <img class="tile random" data-type="{{type}}" data-tile="random" data-tilename="{{palletMap|get_item:type}}" src="/media/{{files.0}}"></img>
                     <details class="tile-list">
                         <summary></summary>
                         {% for src in files %}
